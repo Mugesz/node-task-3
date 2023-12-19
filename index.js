@@ -1,112 +1,95 @@
 const express = require("express");
+const { MongoClient, ObjectId } = require("mongodb");
 
 const app = express();
+const PORT = 5000;
 
-const mentors = [];
-const students = [];
+const URL = "mongodb://your-mongodb-uri"; // Replace with your MongoDB connection string
 
-app.get("/mentors", (req, res) => {
-  res.json(mentors);
-});
+app.use(express.json());
 
-app.get("/students", (req, res) => {
-  res.json(students);
-});
-
-app.get("/mentor:id", (req, res) => {
-  let id = req.params.id;
-  const mentor = mentors.find((mentors) => mentors.id === req.params.id);
-  if (mentor) {
-    res.json(mentor);
-  } else {
-    res.status(404).json({ message: "mentor not found" });
+app.post("/mentors", async (req, res) => {
+  try {
+    const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    const db = connection.db("yourDatabaseName"); // Replace with your database name
+    const result = await db.collection("mentors").insertOne(req.body);
+    connection.close();
+    res.json({ message: "Mentor created successfully", id: result.insertedId });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.get("/student:id", (req, res) => {
-  let id = req.params.id;
-  const student = students.find((student) => student.id === req.params.id);
-  if (student) {
-    res.json(student);
-  } else {
-    res.status(404).json({ message: "student not found" });
+app.post("/students", async (req, res) => {
+  try {
+    const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    const db = connection.db("yourDatabaseName"); // Replace with your database name
+    const result = await db.collection("students").insertOne(req.body);
+    connection.close();
+    res.json({ message: "Student created successfully", id: result.insertedId });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.post("/mentors", (req, res) => {
-  req.body.id = mentors.length + 1;
-  mentors.push(req.body);
-  res.json({ message: "created sucessfully " });
-});
+app.post("/assign", async (req, res) => {
+  try {
+    const { mentorId, studentId } = req.body;
+    const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    const db = connection.db("yourDatabaseName"); // Replace with your database name
 
-app.post("/students", (req, res) => {
-  req.body.id = students.length + 1;
-  students.push(req.body);
-  res.json({ message: "created sucessfully " });
-});
+    const mentorsCollection = db.collection("mentors");
+    const studentsCollection = db.collection("students");
 
-app.post("/assign", (req, res) => {
-  const { mentorId, studentId } = req.body;
-  const mentor = mentors.find((mentor) => mentor.id === mentorId);
-  const student = students.find((student) => student.id === studentId);
+    const mentor = await mentorsCollection.findOne({ _id: ObjectId(mentorId) });
+    const student = await studentsCollection.findOne({ _id: ObjectId(studentId) });
 
-  if (mentor && student) {
-    student.mentorId = mentorId;
-    res.json({
-      success: true,
-      message: `Student ${student.name} assigned to ${mentor.name}`,
-    });
-  } else {
-    res
-      .status(400)
-      .json({ success: false, message: "Invalid mentor or student ID" });
+    if (mentor && student) {
+      await studentsCollection.updateOne({ _id: ObjectId(studentId) }, { $set: { mentorId: ObjectId(mentorId) } });
+      connection.close();
+      res.json({
+        success: true,
+        message: `Student ${student.name} assigned to Mentor ${mentor.name}`,
+      });
+    } else {
+      res.status(400).json({ success: false, message: "Invalid mentor or student ID" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.get("/assign", (req, res) => {
-  const { mentorId, studentId } = req.body;
-  const mentor = mentors.find((mentor) => mentor.id === mentorId);
-  const student = students.find((student) => student.id === studentId);
-
-  if (mentor && student && !student.mentorId) {
-    student.mentorId = mentorId;
-    res.json({
-      success: true,
-      message: `Student ${student.name} assigned to Mentor ${mentor.name}`,
-    });
-  } else {
-    res
-      .status(400)
-      .json({ success: false, message: "Invalid mentor or student ID" });
+app.get("/mentors", async (req, res) => {
+  try {
+    const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    const db = connection.db("yourDatabaseName"); // Replace with your database name
+    const mentors = await db.collection("mentors").find({}).toArray();
+    connection.close();
+    res.json(mentors);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.get("/studentsForMentor/:mentorId", (req, res) => {
-  const mentorId = req.params.mentorId;
-  const mentor = mentors.find((mentor) => mentor.id === mentorId);
-
-  if (mentor) {
-    const studentsForMentor = students.filter(
-      (student) => student.mentorId === mentorId
-    );
-    res.json(studentsForMentor);
-  } else {
-    res.status(404).json({ message: "Mentor not found" });
+app.get("/students", async (req, res) => {
+  try {
+    const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    const db = connection.db("yourDatabaseName"); // Replace with your database name
+    const students = await db.collection("students").find({}).toArray();
+    connection.close();
+    res.json(students);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.get("/previousMentor/:studentId", (req, res) => {
-  const studentId = req.params.studentId;
-  const student = students.find((student) => student.id === studentId);
+// Other routes...
 
-  if (student && student.mentorId) {
-    const previousMentor = mentors.find(
-      (mentor) => mentor.id === student.mentorId
-    );
-    res.json(previousMentor);
-  } else {
-    res.status(404).json({ message: "Student or previous mentor not found" });
-  }
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-app.listen(5000);
