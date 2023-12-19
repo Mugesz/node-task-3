@@ -8,7 +8,7 @@ const URL = "mongodb://your-mongodb-uri"; // Replace with your MongoDB connectio
 
 app.use(express.json());
 
-app.post("/", async (req, res) => {
+app.post("/students", async (req, res) => {
   try {
     const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
     const db = connection.db("yourDatabaseName"); // Replace with your database name
