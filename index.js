@@ -8,6 +8,12 @@ const URL = "mongodb://your-mongodb-uri"; // Replace with your MongoDB connectio
 
 app.use(express.json());
 
+const mentors = [];
+
+app.get('/',(req,res)=>{
+    res.send(mentors)
+})
+
 app.post("/students", async (req, res) => {
   try {
     const connection = await MongoClient.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true });
